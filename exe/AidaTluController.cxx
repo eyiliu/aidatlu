@@ -16,34 +16,46 @@
 
 static const std::string help_usage = R"(
 Usage:
-  -help      help message
-  -verbose   verbose flag
+  -help       help message
+  -verbose    verbose flag
 
-  -quit      after configuring TLU
-  -update    output message interval in millisecond
-  -pause     for user input before starting triggers
-  -save      file with trigger numbers and timestamps
+  -quit       after configuring TLU
+  -update     output message interval in millisecond
+  -pause      for user input before starting triggers
+  -save       file with trigger numbers and timestamps
+
+  -url [addr] 
+              example, using controlhub
+                IMPORTANT start controlhub:    /opt/cactus/bin/controlhub_start
+                -url chtcp-2.0://localhost:10203?target=192.168.200.30:50001
+
+              example, using raw udp  
+                -url ipbusudp-2.0://192.168.200.30:50001
 
   -hz [n]     internal trigger frequency
   -tmaskh [n] trigger mask low word
   -tmaskl [n] trigger mask high word, trigMaskLo = 0x00000008 (pmtA B),  0x00000002 (A)   0x00000004 (B)
 
-  -tA [n]     discriminator threshold for pmtA
-  -tB [n]     discriminator threshold for pmtB
-  -tC [n]     discriminator threshold for pmtC
-  -tD [n]     discriminator threshold for pmtD
-  -tE [n]     discriminator threshold for pmtE
-  -tF [n]     discriminator threshold for pmtF
+  -tA [n]     discriminator threshold for pmtA port (input)
+  -tB [n]     discriminator threshold for pmtB port (input)
+  -tC [n]     discriminator threshold for pmtC port (input)
+  -tD [n]     discriminator threshold for pmtD port (input)
+  -tE [n]     discriminator threshold for pmtE port (input)
+  -tF [n]     discriminator threshold for pmtF port (input)
 
-  -vA [n]     output voltage pmtA
-  -vB [n]     output voltage pmtB
-  -vC [n]     output voltage pmtC
-  -vD [n]     output voltage pmtD
+  -vA [n]     voltage pmtA port (output)
+  -vB [n]     voltage pmtB port (output)
+  -vC [n]     voltage pmtC port (output)
+  -vD [n]     voltage pmtD port (outpur)
  
-  -dA [eudet|aida|aida_id] [with_busy|without_busy] mode for dutA
-  -dB [eudet|aida|aida_id] [with_busy|without_busy] mode for dutB
-  -dC [eudet|aida|aida_id] [with_busy|without_busy] mode for dutC
-  -dD [eudet|aida|aida_id] [with_busy|without_busy] mode for dutD
+  -dA [eudet|aida|aida_id] [with_busy|without_busy]        modes for dutA port (IO)
+  -dB [eudet|aida|aida_id] [with_busy|without_busy]        modes for dutB port (IO)
+  -dC [eudet|aida|aida_id] [with_busy|without_busy]        modes for dutC port (IO)
+  -dD [eudet|aida|aida_id] [with_busy|without_busy]        modes for dutD port (IO)
+
+quick examples:
+  mytlu_ctrl -url ipbusudp-2.0://192.168.200.30:50001 -dA aida_id without_busy -hz 1000 
+  mytlu_ctrl -url chtcp-2.0://localhost:10203?target=192.168.200.30:50001 -dA aida_id with_busy -dB eudet with_busy -dC aida without_busy -hz 1000
 
 )";
 
@@ -258,8 +270,9 @@ int main(int argc, char ** argv) {
     }
   }
   signal(SIGINT, [](int){g_done+=1;});
-
+  
   std::string url_default("chtcp-2.0://localhost:10203?target=192.168.200.30:50001");
+  // std::string url_default("ipbusudp-2.0://192.168.200.30:50001");
   if(url.empty()){
     url=url_default;
     std::printf("using default tlu url location:   %s", url.c_str());
