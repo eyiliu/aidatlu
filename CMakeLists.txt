@@ -21,12 +21,13 @@ set(CMAKE_THREAD_PREFER_PTHREAD ON)
 set(THREADS_PREFER_PTHREAD_FLAG ON)
 find_package(Threads REQUIRED)
 
-set(Boost_USE_STATIC_RUNTIME ON)
-set(Boost_USE_STATIC_LIBS ON) 
+if(BUILD_AIDATLU_STATIC)
+  set(Boost_USE_STATIC_RUNTIME ON)
+  set(Boost_USE_STATIC_LIBS ON)
+endif()
 find_package(Boost REQUIRED COMPONENTS
   system thread filesystem chrono regex program_options unit_test_framework
   )
-
 
 if(BUILD_AIDATLU_STATIC)
   add_library(cactus_uhal_grammars STATIC IMPORTED)
