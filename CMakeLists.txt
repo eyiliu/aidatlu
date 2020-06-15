@@ -105,7 +105,7 @@ install(FILES
 install(TARGETS aidatlu cactus
   EXPORT ${PROJECT_NAME}Targets
   RUNTIME       DESTINATION bin      COMPONENT runtime
-  LIBRARY       DESTINATION lib      COMPONENT runtime  NAMELINK_COMPONENT devel
+  LIBRARY       DESTINATION lib      COMPONENT runtime
   ARCHIVE       DESTINATION lib      COMPONENT devel
   PUBLIC_HEADER DESTINATION include  COMPONENT devel
   RESOURCE      DESTINATION resource COMPONENT runtime
