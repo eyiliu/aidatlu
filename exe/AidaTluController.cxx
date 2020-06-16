@@ -56,7 +56,7 @@ Usage:
 quick examples:
   mytlu_ctrl -url ipbusudp-2.0://192.168.200.30:50001 -dA aida_id without_busy -hz 1000 
   mytlu_ctrl -url chtcp-2.0://localhost:10203?target=192.168.200.30:50001 -dA aida_id with_busy -dB eudet with_busy -dC aida without_busy -hz 1000
-
+  mytlu_ctrl -url chtcp-2.0://131.169.133.168:10203?target=192.168.200.30:50001 -vA 0.85 -vB 0.85 -tA -0.025 -tB -0.025 -hz 0 -tmaskl 0x00000008 -dA aida_id with_busy
 )";
 
 void OverwriteBits(uint16_t &dst, uint16_t src, int pos, int len) {
@@ -259,16 +259,7 @@ int main(int argc, char ** argv) {
     std::cout<<help_usage<<std::endl;
     exit(0);
   }
-  //return 0;
-  
-  std::shared_ptr<std::ofstream> sfile;
-  if (sname != "") {
-    sfile = std::make_shared<std::ofstream>(sname.c_str());
-    if (!sfile->is_open()) {
-      std::cerr<<"Unable to open file: " << sname;
-      return 1;
-    }
-  }
+
   signal(SIGINT, [](int){g_done+=1;});
   
   std::string url_default("chtcp-2.0://localhost:10203?target=192.168.200.30:50001");
@@ -277,9 +268,8 @@ int main(int argc, char ** argv) {
     url=url_default;
     std::printf("using default tlu url location:   %s", url.c_str());
   }
-  std::printf("open tlu at url location:   %s", url.c_str());
   tlu::AidaTluController TLU(url);
-  uint8_t verbose = 2;
+  uint8_t verbose = 0;
   // Define constants
   TLU.DefineConst(4, 6);
 
@@ -302,13 +292,20 @@ int main(int argc, char ** argv) {
   // Initialize the Si5345 clock chip using pre-generated file
   TLU.InitializeClkChip( verbose  );
 
+  // reset status
+  TLU.SetTriggerVeto(1, verbose);
+  TLU.SetRunActive(0, 1);
+  TLU.SetEnableRecordData(0);
+  TLU.SetInternalTriggerFrequency(0, verbose );
+  TLU.SetTriggerMask( 0,  0);
+  std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  
   TLU.ResetSerdes();
   TLU.ResetCounters();
-  TLU.SetTriggerVeto(1, verbose);
+  TLU.ResetTimestamp();
   TLU.ResetFIFO();
   TLU.ResetEventsBuffer();
-  TLU.ResetTimestamp();
-
+  
   //conf
   TLU.pwrled_setVoltages( vpmt[0], vpmt[1], vpmt[2], vpmt[3],verbose);  
   TLU.SetThresholdValue(0, vthresh[0], verbose);
@@ -318,11 +315,13 @@ int main(int argc, char ** argv) {
   TLU.SetThresholdValue(4, vthresh[4], verbose);
   TLU.SetThresholdValue(5, vthresh[5], verbose);
 
+  TLU.SetTriggerMask( tmaskh,  tmaskl ); // MaskHi, MaskLow, # trigMaskLo = 0x00000008 (pmt1 2),  0x00000002 (1)   0x00000004 (2)   
+  
   TLU.SetDUTMask(dut_enable, verbose);
   TLU.SetDUTMaskMode(dut_mode, verbose);
   TLU.SetDUTMaskModeModifier(dut_modifier, verbose);
   TLU.SetDUTIgnoreBusy(dut_nobusy, verbose);
-
+  
   TLU.configureHDMI(1, dut_hdmi[0], verbose);
   TLU.configureHDMI(2, dut_hdmi[1], verbose);
   TLU.configureHDMI(3, dut_hdmi[2], verbose);
@@ -340,46 +339,32 @@ int main(int argc, char ** argv) {
   
   TLU.SetShutterParameters( false, 0, 0, 0, 0, 0, verbose);  
   TLU.SetInternalTriggerFrequency(hz, verbose );
+  
+  // TLU.SetUhalLogLevel(ipbusDebug);
+  std::printf("Hardware ID: %#012x\n  Firmware version: %d\n Url: %s \n", TLU.GetBoardID(), TLU.GetFirmwareVersion(), url.c_str() );  
+
+  std::printf("Enter RunLoop\n");
+  uint32_t ev_total = 0;
+  int nev = 0;
 
   TLU.SetEnableRecordData(1);
-
-  TLU.SetTriggerMask( tmaskh,  tmaskl ); // MaskHi, MaskLow, # trigMaskLo = 0x00000008 (pmt1 2),  0x00000002 (1)   0x00000004 (2)   
-  TLU.SetUhalLogLevel(ipbusDebug);
-
-  uint32_t bid = TLU.GetBoardID();
-  uint32_t fid = TLU.GetFirmwareVersion();
-  std::printf("Board ID number  = %#012x\n ", bid);
-  std::printf("Firmware version  = %d\n ", fid);
-  
-  if (do_quit) return 0;
-
-  if (do_pause) {
-    std::printf("Press enter to start triggers.\n");
-    std::getchar();
-  }
+  TLU.SetRunActive(1, 1);  
   TLU.SetTriggerVeto(0, verbose);
-  std::printf( "FMC TLU Started!\n");
-  
-  uint32_t total = 0;
   while (!g_done) {
     TLU.ReceiveEvents(verbose);
-    int nev = 0;
     while (!TLU.IsBufferEmpty()){
-      nev++;
-      tlu::fmctludata * data = TLU.PopFrontEvent();
-      uint32_t evn = data->eventnumber;
+      ev_total++;
+      tlu::fmctludata *data = TLU.PopFrontEvent();
+      uint32_t evn = data->eventnumber; //trigger_n
       uint64_t t = data->timestamp;
-
-      if (sfile.get()) {
-        *sfile << *data;
-      }
+      std::printf("%i \n", ev_total);
+      delete data;
     }
-    total += nev;
-    if (update > 0) {
-      std::this_thread::sleep_for(std::chrono::milliseconds(update));
-    }
+    
   }
-  std::printf("Quitting...\n\n");
+  std::printf("Quit RunLoop\n");
   TLU.SetTriggerVeto(1, verbose);
+  TLU.SetRunActive(0, 1);
+  TLU.SetEnableRecordData(0);
   return 0;
 }
