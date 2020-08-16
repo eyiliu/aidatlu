@@ -2,7 +2,7 @@
 # add_executable(mytlu tlu_test_main.cxx)
 # target_link_libraries(mytlu PRIVATE aidatlu)
 
-add_executable(aidatluTool AidaTluController.cxx)
+add_executable(aidatluTool aidatluTool.cxx)
 target_link_libraries(aidatluTool PRIVATE aidatlu)
 
 install(TARGETS aidatluTool
