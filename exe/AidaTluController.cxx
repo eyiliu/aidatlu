@@ -19,32 +19,43 @@ Usage:
   -help       help message
   -verbose    verbose flag
 
+  -file       save file with trigger numbers and timestamps
   -quit       quit after configuration. TLU will keep running.
-  -save       save file with trigger numbers and timestamps
 
   -url [addr]
-              example, using controlhub
-                IMPORTANT start controlhub:    /opt/cactus/bin/controlhub_start
-                -url chtcp-2.0://localhost:10203?target=192.168.200.30:50001
+              example, using controlhub proxy
+                -url chtcp-2.0://172.17.0.1:10203?target=192.168.200.30:50001
+              IMPORTANT NOTE:
+                   controlhub is required to run as deamon
+                   controlhub startup command >  /opt/cactus/bin/controlhub_start
+                   controlhub manual: https://ipbus.web.cern.ch/ipbus/doc/user/html/software/ControlHub.html
 
               example, using raw udp
                 -url ipbusudp-2.0://192.168.200.30:50001
 
-  -hz [n]     internal trigger frequency
-  -tmaskh [n] trigger mask low word
-  -tmaskl [n] trigger mask high word, trigMaskLo = 0x00000008 (pmtA B),  0x00000002 (A)   0x00000004 (B)
+  -hz [n]     internal trigger frequency for test when exteral trigger(pmt) is not avalible
 
-  -tA [n]     discriminator threshold for pmtA port (input)
-  -tB [n]     discriminator threshold for pmtB port (input)
-  -tC [n]     discriminator threshold for pmtC port (input)
-  -tD [n]     discriminator threshold for pmtD port (input)
-  -tE [n]     discriminator threshold for pmtE port (input)
-  -tF [n]     discriminator threshold for pmtF port (input)
+  -tmaskh [n] trigger mask high word
+  -tmaskl [n] trigger mask low word
+              example:
+                -tmaskh 0x00000000 -tmaskl 0x00000008
+                    Trigger = pmtA && pmtB && !pmtC && !pmtD && !pmtE && !pmtF
+                -tmaskh 0x00000000 -tmaskl 0x00000002
+                    Trigger = pmtA && !pmtB && !pmtC && !pmtD && !pmtE && !pmtF
+                -tmaskh 0x00000000 -tmaskl 0x00000004
+                    Trigger = !pmtA && pmtB && !pmtC && !pmtD && !pmtE && !pmtF
 
-  -vA [n]     voltage pmtA port (output)
-  -vB [n]     voltage pmtB port (output)
-  -vC [n]     voltage pmtC port (output)
-  -vD [n]     voltage pmtD port (output)
+  -tA [n]     discriminator threshold for pmtA port, range[-1.3, 1.3] (input)
+  -tB [n]     discriminator threshold for pmtB port, range[-1.3, 1.3] (input)
+  -tC [n]     discriminator threshold for pmtC port, range[-1.3, 1.3] (input)
+  -tD [n]     discriminator threshold for pmtD port, range[-1.3, 1.3] (input)
+  -tE [n]     discriminator threshold for pmtE port, range[-1.3, 1.3] (input)
+  -tF [n]     discriminator threshold for pmtF port, range[-1.3, 1.3] (input)
+
+  -vA [n]     bias voltage pmtA port, range[0, 1] (output)
+  -vB [n]     bias voltage pmtB port, range[0, 1] (output)
+  -vC [n]     bias voltage pmtC port, range[0, 1] (output)
+  -vD [n]     bias voltage pmtD port, range[0, 1] (output)
 
   -dA [eudet|aida|aida_id] [with_busy|without_busy]        modes for dutA port (IO)
   -dB [eudet|aida|aida_id] [with_busy|without_busy]        modes for dutB port (IO)
@@ -67,20 +78,19 @@ int main(int argc, char ** argv) {
 
   int do_quit = false;
   int do_help = false;
-  int do_verbose = false;
+  uint32_t verbose_level = 0;
 
   struct option longopts[] =
     {
-     { "help",       no_argument,       &do_help,      1  },
-     { "verbose",    no_argument,       &do_verbose,   1  },
+     { "help",     no_argument,       &do_help,      1  },
+     { "verbose",  optional_argument, NULL,         'v' },
+     { "file",     required_argument, NULL,         'f' },
+     { "quit",     no_argument,       &do_quit,      1  },
 
-     { "quit",       no_argument,       &do_quit,      1  },
-     { "save",       optional_argument, NULL,         's' },
-
-     { "url",        required_argument, NULL,         'm' },
-     { "tmaskh",     required_argument, NULL,         'v' },
-     { "tmaskl",     required_argument, NULL,         'a' },
-     { "hz",         required_argument, NULL,         'i' },
+     { "url",      required_argument, NULL,         'm' },
+     { "tmaskh",   required_argument, NULL,         'b' },
+     { "tmaskl",   required_argument, NULL,         'a' },
+     { "hz",       required_argument, NULL,         'i' },
 
      { "tA",       required_argument, NULL,         'A' },
      { "tB",       required_argument, NULL,         'B' },
@@ -101,9 +111,9 @@ int main(int argc, char ** argv) {
      { 0, 0, 0, 0 }};
 
   uint32_t hz = 0;
-  uchar_t tmaskh = 0;
-  uchar_t tmaskl = 0;
-
+  uint32_t tmaskh = 0;
+  uint32_t tmaskl = 0;
+  std::FILE* fp = 0;
   std::string sname;
   std::string url;
   uchar_t  ipbusDebug = 2;
@@ -112,40 +122,51 @@ int main(int argc, char ** argv) {
   uint16_t dut_mode = 0b00000000;
   uint16_t dut_modifier = 0b0000;
   uint16_t dut_nobusy = 0b0000;
-  //uint16_t dut_noveto =
   uint16_t dut_hdmi[4] = {0b0111, 0b0111, 0b0111, 0b0111}; // bit 0= CTRL, bit 1= SPARE/SYNC/T0/AIDA_ID, bit 2= TRIG/EUDET_ID, bit 3= BUSY
   uint16_t dut_clk[4] = {0b00, 0b00, 0b00, 0b00};
 
   float vthresh[6] = {0, 0, 0, 0, 0, 0};
-  float vpmt[6] = {0, 0, 0, 0, 0, 0};
+  float vpmt[4] = {0, 0, 0, 0};
 
   int c;
   opterr = 1;
   while ((c = getopt_long_only(argc, argv, "", longopts, NULL))!= -1) {
     switch (c) {
-    case 'h':
-      do_help = 1;
+    case 'v':{
+      verbose_level = 2;
+      if(optarg != NULL){
+        verbose_level = static_cast<uint32_t>(std::stoull(optarg, 0, 10));
+      }
       break;
-    case 'q':
-      do_quit = 1;
+    }
+    case 'f':
+        sname = optarg;
       break;
     case 'm':
       url = optarg;
       break;
-    case 's':
-      if(optarg != NULL)
-        sname = optarg;
-      else
-        sname = "data.txt";
-      break;
     case 'i':
       hz = static_cast<uint32_t>(std::stoull(optarg, 0, 10));
       break;
-    case 'v':
-      tmaskh = static_cast<uchar_t>(std::stoull(optarg, 0, 16));
+    case 'b':
+      if(std::regex_match(optarg, std::regex("\\s*(?:(0[Xx])?([0-9]+))\\s*")) ){
+        std::cmatch mt;
+        std::regex_match(optarg, mt, std::regex("\\s*(?:(0[Xx])?([0-9]+))\\s*"));
+        tmaskh = std::stoull(mt[2].str(), 0, mt[1].str().empty()?10:16);
+      }
+      else{
+        std::fprintf(stderr, "required argument must be Hexadecimal or Decimial number");
+      }
       break;
     case 'a':
-      tmaskl = static_cast<uchar_t>(std::stoull(optarg, 0, 16));
+      if(std::regex_match(optarg, std::regex("\\s*(?:(0[Xx])?([0-9]+))\\s*")) ){
+        std::cmatch mt;
+        std::regex_match(optarg, mt, std::regex("\\s*(?:(0[Xx])?([0-9]+))\\s*"));
+        tmaskl = std::stoull(mt[2].str(), 0, mt[1].str().empty()?10:16);
+      }
+      else{
+        std::fprintf(stderr, "required argument must be Hexadecimal or Decimial number");
+      }
       break;
     case 'A':
     case 'B':
@@ -158,7 +179,7 @@ int main(int argc, char ** argv) {
         vthresh[ch] = std::stof(optarg);
       }
       catch(...){
-        fprintf(stderr, "error of stod\n");
+        std::fprintf(stderr, "error of stod\n");
         exit(1);
       }
       break;
@@ -172,7 +193,7 @@ int main(int argc, char ** argv) {
         vpmt[ch] = std::stof(optarg);
       }
       catch(...){
-        fprintf(stderr, "error of stod\n");
+        std::fprintf(stderr, "error of stod\n");
         exit(1);
       }
       break;
@@ -181,12 +202,9 @@ int main(int argc, char ** argv) {
     case 'I':
     case 'J':
     case 'K':{
-      fprintf(stdout, "case %c\n", c);
       optind--;
       uint16_t ch = c - 'H'; //dut0, H case
-      std::cout<< "dut channel "<< ch<<std::endl;
       for( ;optind < argc && *argv[optind] != '-'; optind++){
-        std::cout<<argv[optind]<<std::endl;
         const char* mode = argv[optind];
         if(std::regex_match(mode, std::regex("\\s*(eudet)\\s*"))){
           OverwriteBits(dut_enable, 0b1, ch, 1);
@@ -216,7 +234,7 @@ int main(int argc, char ** argv) {
           OverwriteBits(dut_nobusy, 0b1, ch, 1);
         }
         else{
-          fprintf(stderr, "dut%u unknow dut parmaters: %s", ch, mode);
+          std::fprintf(stderr, "dut%u unknow dut parmaters: %s", ch, mode);
           exit(1);
         }
       }
@@ -226,26 +244,27 @@ int main(int argc, char ** argv) {
     case 0: /* getopt_long() set a variable, just keep going */
       break;
     case 1:
-      fprintf(stderr,"case 1\n");
+      std::fprintf(stderr,"case 1\n");
       exit(1);
       break;
     case ':':
-      fprintf(stderr,"case :\n");
+      std::fprintf(stderr,"case :\n");
       exit(1);
       break;
     case '?':
-      fprintf(stderr,"case ?\n");
+      std::fprintf(stderr,"case ?\n");
+      std::printf("%s\n", help_usage.c_str());
       exit(1);
       break;
     default:
-      fprintf(stderr, "case default, missing branch in switch-case\n");
+      std::fprintf(stderr, "case default, missing branch in switch-case\n");
       exit(1);
       break;
     }
   }
 
   if(do_help){
-    std::cout<<help_usage<<std::endl;
+    std::printf("%s\n", help_usage.c_str());
     exit(0);
   }
 
@@ -255,10 +274,28 @@ int main(int argc, char ** argv) {
   // std::string url_default("ipbusudp-2.0://192.168.200.30:50001");
   if(url.empty()){
     url=url_default;
-    std::printf("using default tlu url location:   %s", url.c_str());
+    std::printf("using default tlu url location:   %s \n\n", url.c_str());
   }
+
+
+  std::printf("\n--------------------------------------\n");
+  std::printf("device_url:            %s\n", url.c_str());
+  std::printf("file_data:             %s\n", sname.c_str());
+  std::printf("verbose:               %lu\n", verbose_level);
+  std::printf("interal_trigger:       %luHz\n", hz);
+  std::printf("tmaskh:                %#010lx\n", tmaskh);
+  std::printf("tmaskl:                %#010lx\n", tmaskl);
+  std::printf("dut_enable:            %#010lx\n", dut_enable);
+  std::printf("dut_modifier:          %#010lx\n", dut_modifier);
+  std::printf("dut_nobusy:            %#010lx\n", dut_nobusy);
+  std::printf("dut_hdmi[A,B,C,D]:     %#06lx   %#06lx   %#06lx   %#06lx\n", dut_hdmi[0], dut_hdmi[1], dut_hdmi[2], dut_hdmi[3]);
+  std::printf("dut_clk[A,B,C,D]:      %#06lx   %#06lx   %#06lx   %#06lx\n", dut_clk[0], dut_clk[1], dut_clk[2], dut_clk[3]);
+  std::printf("vpmt[A,B,C,D]:         %06f     %06f     %06f     %06f\n", vpmt[0], vpmt[1], vpmt[2], vpmt[3]);
+  std::printf("vthresh[A,B,C,D,E,F]:  %06f     %06f     %06f     %06f     %06f     %06f\n", vthresh[0], vthresh[1], vthresh[2], vthresh[3], vthresh[4], vthresh[5]);
+  std::printf("\n--------------------------------------\n");
+
   tlu::AidaTluController TLU(url);
-  uint8_t verbose = 2;
+  uint8_t verbose = verbose_level;
   // Define constants
   TLU.DefineConst(4, 6);
 
@@ -329,16 +366,30 @@ int main(int argc, char ** argv) {
   TLU.SetShutterParameters( false, 0, 0, 0, 0, 0, verbose);
   TLU.SetInternalTriggerFrequency(hz, verbose );
 
-  // TLU.SetUhalLogLevel(ipbusDebug);
+  TLU.SetUhalLogLevel(verbose_level);
   std::printf("Hardware ID: %#012x\n  Firmware version: %d\n Url: %s \n", TLU.GetBoardID(), TLU.GetFirmwareVersion(), url.c_str() );
 
-  std::printf("Enter RunLoop\n");
-  uint32_t ev_total = 0;
-  int nev = 0;
+  if(do_quit){
+    TLU.SetRunActive(1, 1);
+    TLU.SetTriggerVeto(0, verbose);
+    std::printf("Trigger generating.\n Quit.\n");
+    return 0;
+  }
+
+  if(!sname.empty()){
+    std::fopen(sname.c_str(), "w");
+    if(!fp) {
+      std::fprintf(stderr, "File opening failed: %s \n", sname.c_str());
+      exit(1);
+    }
+  }
 
   TLU.SetEnableRecordData(1);
   TLU.SetRunActive(1, 1);
   TLU.SetTriggerVeto(0, verbose);
+
+  std::printf("Enter RunLoop\n");
+  uint32_t ev_total = 0;
   while (!g_done) {
     TLU.ReceiveEvents(verbose);
     while (!TLU.IsBufferEmpty()){
@@ -346,7 +397,9 @@ int main(int argc, char ** argv) {
       tlu::fmctludata *data = TLU.PopFrontEvent();
       uint32_t evn = data->eventnumber; //trigger_n
       uint64_t t = data->timestamp;
-      // std::printf("%i \n", ev_total);
+      if(fp){
+        //TODO: std::fwrite
+      }
       delete data;
     }
   }
@@ -354,6 +407,10 @@ int main(int argc, char ** argv) {
   TLU.SetTriggerVeto(1, verbose);
   TLU.SetRunActive(0, 1);
   TLU.SetEnableRecordData(0);
+  std::printf("\nTrigger generating stops.\n");
   std::printf("\n\n");
+  if(fp){
+    std::fclose(fp);
+  }
   return 0;
 }

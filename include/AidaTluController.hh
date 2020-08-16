@@ -281,7 +281,7 @@ namespace tlu {
     uchar_t sc3;
     uchar_t sc4;
     uchar_t sc5;
-    uint32_t eventnumber;
+    uint32_t eventnumber; // trigger number
     uint64_t timestamp1;
 
   };
