@@ -13,14 +13,14 @@
 
 #include "uhal/uhal.hpp"
 
-static const std::string reg_table_xml_content = 
+static const std::string reg_table_xml_content =
 #include "aida_tlu_address-fw_version_14.hh"
   ;
 
-static const std::string clk_config_content = 
+static const std::string clk_config_content =
 #include "aida_tlu_clk_config.hh"
   ;
-  
+
 namespace tlu {
   AidaTluController::AidaTluController(const std::string & url) : m_DACaddr(0), m_IDaddr(0) {
     auto now = std::chrono::system_clock::now();
@@ -597,15 +597,16 @@ namespace tlu {
   void AidaTluController::pwrled_setVoltages(float v1, float v2, float v3, float v4, uint8_t verbose) {
     // Note that ordering is not 1:1. Mapping is done in here.
     if (verbose > 0){
-      std::cout << "\tPMT1= " << v3 << " V" << std::endl;
-      std::cout << "\tPMT2= " << v2 << " V" << std::endl;
-      std::cout << "\tPMT3= " << v4 << " V" << std::endl;
-      std::cout << "\tPMT4= " << v1 << " V" << std::endl;
+      std::cout << "\tPMTA= " << v1 << " V" << std::endl;
+      std::cout << "\tPMTB= " << v2 << " V" << std::endl;
+      std::cout << "\tPMTC= " << v3 << " V" << std::endl;
+      std::cout << "\tPMTD= " << v4 << " V" << std::endl;
     }
-    m_pwrled->setVchannel(0, v3, verbose);
-    m_pwrled->setVchannel(1, v2, verbose);
-    m_pwrled->setVchannel(2, v4, verbose);
+
     m_pwrled->setVchannel(3, v1, verbose);
+    m_pwrled->setVchannel(1, v2, verbose);
+    m_pwrled->setVchannel(0, v3, verbose);
+    m_pwrled->setVchannel(2, v4, verbose);
   }
 
   uint32_t AidaTluController::PackBits(std::vector< unsigned int>  rawValues){
@@ -1049,8 +1050,6 @@ namespace tlu {
   void AidaTluController::SetThresholdValue(unsigned char channel, float thresholdVoltage, uint8_t verbose ) {
     // Channel can either be [0, 5] or 7 (all channels).
     int nChannels= m_nTrgIn; //We should read this from conf file, ideally.
-    bool intRef= false; //We should read this from conf file, ideally.
-    float vref;
 
     if ( std::abs(thresholdVoltage) > m_vref ){
       thresholdVoltage= m_vref*thresholdVoltage/std::abs(thresholdVoltage);
