@@ -201,9 +201,7 @@ namespace tlu {
     res= ReadRRegister("version");
     std::stringstream ss; //Use a string stream to do all the manipulation necessary
     ss << "AIDA TLU FIRMWARE VERSION " << std::hex << std::showbase  << res << "\t";
-    std::string myMsg = ss.str();
-    std::printf(myMsg.c_str());
-
+    std::printf("%s\n", ss.str().c_str());
     return res;
   }
 
@@ -352,7 +350,7 @@ namespace tlu {
       ss << "USING ControlHub WITH IP= " << myURI << "\t";
     }
     std::string myMsg = ss.str();
-    std::printf(myMsg.c_str());
+    std::printf("%s\n", myMsg.c_str());
     return myURI;
   }
 
@@ -374,7 +372,7 @@ namespace tlu {
     }
     ss << "\t";
     std::string myMsg = ss.str();
-    std::printf(myMsg.c_str());
+    std::printf("%s\n", myMsg.c_str());
 
     //std::cout << " " << std::endl;
     //std::cout.flags( coutflags );
@@ -395,8 +393,7 @@ namespace tlu {
     std::stringstream ss;
     vetoState= ReadRRegister("triggerLogic.TriggerVetoR");
     ss << "TRIGGER VETO: triggers are " << m_myStates[!bool(vetoState)] << "\t";
-    std::string myMsg = ss.str();
-    std::printf( myMsg.c_str());
+    std::printf("%s\n", ss.str().c_str());
     return vetoState;
   };
 
@@ -430,8 +427,7 @@ namespace tlu {
     m_zeClock->writeConfiguration(tmpConf, false);
 
     ss << "Si5345 design Id: " << m_zeClock->checkDesignID(verbose) << "\t";
-    std::string myMsg = ss.str();
-    std::printf(myMsg.c_str());
+    std::printf("%s\n", ss.str().c_str());
     return 0;
   }
 
@@ -1153,8 +1149,7 @@ namespace tlu {
     else{
       std::stringstream ss;
       ss << regName << ": Mismatch in values. Written: " << std::hex << std::showbase << (written & mask) << "; readback as: " << (readback & mask) << "\t";
-      std::string myMsg = ss.str();
-      std::printf(myMsg.c_str());
+      std::printf("%s\n", ss.str().c_str());
     }
   }
 
