@@ -12,6 +12,8 @@ set(CMAKE_CXX_STANDARD 17)
 # set(CMAKE_LINK_SEARCH_START_STATIC ON)
 # set(CMAKE_LINK_SEARCH_END_STATIC ON)
 
+option(BUILD_AIDATLU_STATIC "build aidatlu tool static" OFF)
+
 if(BUILD_AIDATLU_STATIC)
   set(CMAKE_EXE_LINKER_FLAGS    "${CMAKE_EXE_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
   set(CMAKE_SHARED_LINKER_FLAGS "${CMAKE_SHARED_LINKER_FLAGS} -static-libstdc++ -static-libgcc")
