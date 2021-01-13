@@ -18,6 +18,7 @@ static const std::string help_usage = R"(
 Usage:
   -help       help message
   -verbose    verbose flag
+  -print
 
   -file       save file with trigger numbers and timestamps
   -quit       quit after configuration. TLU will keep running.
@@ -66,6 +67,13 @@ quick examples:
   aidatluTool -url ipbusudp-2.0://192.168.200.30:50001 -dA aida_id without_busy -hz 1000
   aidatluTool -url chtcp-2.0://localhost:10203?target=192.168.200.30:50001 -dA aida_id with_busy -dB eudet with_busy -dC aida without_busy -hz 1000
   aidatluTool -url chtcp-2.0://192.168.21.1:10203?target=192.168.200.30:50001 -vA 0.75 -vB 0.75 -tA -0.025 -tB -0.025 -hz 0 -tmaskl 0x00000008 -dA aida_id with_busy
+  aidatluTool -url ipbusudp-2.0://192.168.200.30:50001 -dA aida_id without_busy -hz 0 -print -tmaskh 0x0  -tmaskl 0x1116 -vA 0.85 -vB 0.85 -vC 0.85 -vD 0.85 -tA -0.02 -tB -0.02 -tC -0.02 -tD -0.02 -tE -0.02
+
+note:
+PMT model: HAMAMATSU H11900-110.
+TLU provides PMT power +12V fixed.
+PMT contrl pin: 0.5v-1.1v, (opt. ~0.8v)
+
 )";
 
 void OverwriteBits(uint16_t &dst, uint16_t src, int pos, int len) {
@@ -78,6 +86,8 @@ int main(int argc, char ** argv) {
 
   int do_quit = false;
   int do_help = false;
+  int do_print = false;
+
   uint32_t verbose_level = 0;
 
   struct option longopts[] =
@@ -85,6 +95,7 @@ int main(int argc, char ** argv) {
      { "help",     no_argument,       &do_help,      1  },
      { "verbose",  optional_argument, NULL,         'v' },
      { "file",     required_argument, NULL,         'f' },
+     { "print",    no_argument,       &do_print,     1  },
      { "quit",     no_argument,       &do_quit,      1  },
 
      { "url",      required_argument, NULL,         'm' },
@@ -149,9 +160,9 @@ int main(int argc, char ** argv) {
       hz = static_cast<uint32_t>(std::stoull(optarg, 0, 10));
       break;
     case 'b':
-      if(std::regex_match(optarg, std::regex("\\s*(?:(0[Xx])?([0-9]+))\\s*")) ){
+      if(std::regex_match(optarg, std::regex("\\s*(?:(0[Xx])?([0-9a-fA-F]+))\\s*")) ){
         std::cmatch mt;
-        std::regex_match(optarg, mt, std::regex("\\s*(?:(0[Xx])?([0-9]+))\\s*"));
+        std::regex_match(optarg, mt, std::regex("\\s*(?:(0[Xx])?([0-9a-fA-F]+))\\s*"));
         tmaskh = std::stoull(mt[2].str(), 0, mt[1].str().empty()?10:16);
       }
       else{
@@ -159,9 +170,9 @@ int main(int argc, char ** argv) {
       }
       break;
     case 'a':
-      if(std::regex_match(optarg, std::regex("\\s*(?:(0[Xx])?([0-9]+))\\s*")) ){
+      if(std::regex_match(optarg, std::regex("\\s*(?:(0[Xx])?([0-9a-fA-F]+))\\s*")) ){
         std::cmatch mt;
-        std::regex_match(optarg, mt, std::regex("\\s*(?:(0[Xx])?([0-9]+))\\s*"));
+        std::regex_match(optarg, mt, std::regex("\\s*(?:(0[Xx])?([0-9a-fA-F]+))\\s*"));
         tmaskl = std::stoull(mt[2].str(), 0, mt[1].str().empty()?10:16);
       }
       else{
@@ -397,6 +408,12 @@ int main(int argc, char ** argv) {
       tlu::fmctludata *data = TLU.PopFrontEvent();
       uint32_t evn = data->eventnumber; //trigger_n
       uint64_t t = data->timestamp;
+      if(do_print){
+        std::printf("-- trigger #%u, timestamp #%llu,  Fire[A,B,C,D,E,F]: %01u %01u %01u %01u %01u %01u\n", evn, t,
+                    (unsigned)(data->input0), (unsigned)(data->input1), (unsigned)(data->input2),
+                    (unsigned)(data->input3), (unsigned)(data->input4), (unsigned)(data->input5));
+      }
+
       if(fp){
         //TODO: std::fwrite
       }
