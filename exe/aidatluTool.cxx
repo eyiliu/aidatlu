@@ -10,6 +10,8 @@
 #include <chrono>
 #include <thread>
 #include <regex>
+#include <future>
+
 
 #include <unistd.h>
 #include <getopt.h>
@@ -64,6 +66,7 @@ Usage:
   -dD [eudet|aida|aida_id] [with_busy|without_busy]        modes for dutD port (IO)
 
 quick examples:
+  aidatluTool -url ipbusudp-2.0://192.168.200.30:50001 -dA aida_id without_busy -hz 10 -print
   aidatluTool -url ipbusudp-2.0://192.168.200.30:50001 -dA aida_id without_busy -hz 1000
   aidatluTool -url chtcp-2.0://localhost:10203?target=192.168.200.30:50001 -dA aida_id with_busy -dB eudet with_busy -dC aida without_busy -hz 1000
   aidatluTool -url chtcp-2.0://192.168.21.1:10203?target=192.168.200.30:50001 -vA 0.75 -vB 0.75 -tA -0.025 -tB -0.025 -hz 0 -tmaskl 0x00000008 -dA aida_id with_busy
@@ -76,13 +79,56 @@ PMT contrl pin: 0.5v-1.1v, (opt. ~0.8v)
 
 )";
 
+
+
+static sig_atomic_t g_done = 0;
+std::atomic<size_t> ga_unexpectedN = 0;
+std::atomic<size_t> ga_dataFrameN = 0;
+std::atomic<uint16_t>  ga_lastTriggerId = 0;
+
+uint64_t AsyncWatchDog(){
+  auto tp_run_begin = std::chrono::system_clock::now();
+  auto tp_old = tp_run_begin;
+  size_t st_old_dataFrameN = 0;
+  size_t st_old_unexpectedN = 0;
+
+  while(!g_done){
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    auto tp_now = std::chrono::system_clock::now();
+    std::chrono::duration<double> dur_period_sec = tp_now - tp_old;
+    std::chrono::duration<double> dur_accu_sec = tp_now - tp_run_begin;
+    double sec_period = dur_period_sec.count();
+    double sec_accu = dur_accu_sec.count();
+
+    size_t st_unexpectedN = ga_unexpectedN;
+    size_t st_dataFrameN = ga_dataFrameN;
+    uint16_t st_lastTriggerId= ga_lastTriggerId;
+
+    double st_hz_pack_accu = st_dataFrameN / sec_accu;
+    double st_hz_pack_period = (st_dataFrameN-st_old_dataFrameN) / sec_period;
+
+    tp_old = tp_now;
+    st_old_dataFrameN= st_dataFrameN;
+    st_old_unexpectedN = st_unexpectedN;
+    std::fprintf(stdout, "++ trigger_accu(%7.2fhz) trigger_trans(%7.2fhz) last_tid(%8hu)\r",st_hz_pack_accu, st_hz_pack_period, st_lastTriggerId);
+    std::fflush(stdout);
+  }
+  std::fprintf(stdout, "\n\n");
+  return 0;
+}
+
+
+
 void OverwriteBits(uint16_t &dst, uint16_t src, int pos, int len) {
     uint16_t mask = (((uint16_t)1 << len) - 1) << pos;
     dst = ( dst & ~mask )|( (src<<pos) & mask );
 }
 
-static sig_atomic_t g_done = 0;
 int main(int argc, char ** argv) {
+  if(argc == 1){
+    std::printf("%s\n", help_usage.c_str());
+    exit(1);
+  }
 
   int do_quit = false;
   int do_help = false;
@@ -398,8 +444,11 @@ int main(int argc, char ** argv) {
   TLU.SetEnableRecordData(1);
   TLU.SetRunActive(1, 1);
   TLU.SetTriggerVeto(0, verbose);
+  std::printf("Trigger output is enabled.\n");
 
-  std::printf("Enter RunLoop\n");
+  std::future<uint64_t> fut_async_watch;
+  fut_async_watch = std::async(std::launch::async, &AsyncWatchDog);
+
   uint32_t ev_total = 0;
   while (!g_done) {
     TLU.ReceiveEvents(verbose);
@@ -408,8 +457,10 @@ int main(int argc, char ** argv) {
       tlu::fmctludata *data = TLU.PopFrontEvent();
       uint32_t evn = data->eventnumber; //trigger_n
       uint64_t t = data->timestamp;
+      ga_dataFrameN = ev_total;
+      ga_lastTriggerId = evn;
       if(do_print){
-        std::printf("-- trigger #%u, timestamp #%llu,  Fire[A,B,C,D,E,F]: %01u %01u %01u %01u %01u %01u\n", evn, t,
+        std::printf("-- trigger#%8u, timestamp #%llu,  Fire[A,B,C,D,E,F]: %01u %01u %01u %01u %01u %01u\n", evn, t,
                     (unsigned)(data->input0), (unsigned)(data->input1), (unsigned)(data->input2),
                     (unsigned)(data->input3), (unsigned)(data->input4), (unsigned)(data->input5));
       }
@@ -420,14 +471,17 @@ int main(int argc, char ** argv) {
       delete data;
     }
   }
-  std::printf("Quit RunLoop\n");
   TLU.SetTriggerVeto(1, verbose);
   TLU.SetRunActive(0, 1);
   TLU.SetEnableRecordData(0);
-  std::printf("\nTrigger generating stops.\n");
-  std::printf("\n\n");
+  std::printf("Trigger output is disabled.\n");
   if(fp){
     std::fclose(fp);
   }
+
+  if(fut_async_watch.valid())
+    fut_async_watch.get();
+
+  std::printf("\n\n");
   return 0;
 }
