@@ -1,5 +1,6 @@
-cmake_minimum_required(VERSION 3.5 FATAL_ERROR)
+cmake_minimum_required(VERSION 3.22 FATAL_ERROR)
 project(aidatlu VERSION 1.0.0 LANGUAGES CXX)
+
 
 if(CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
   set(CMAKE_INSTALL_PREFIX ${PROJECT_SOURCE_DIR}/INSTALL CACHE PATH "Default prefix of install directories" FORCE)
@@ -27,9 +28,23 @@ if(BUILD_AIDATLU_STATIC)
   set(Boost_USE_STATIC_RUNTIME ON)
   set(Boost_USE_STATIC_LIBS ON)
 endif()
-find_package(Boost REQUIRED COMPONENTS
-  system thread filesystem chrono regex program_options unit_test_framework
+
+
+cmake_host_system_information(RESULT PLATFORM_ID QUERY DISTRIB_PLATFORM_ID)
+if(PLATFORM_ID STREQUAL "platform:el8")
+  find_package(Boost 1.66 EXACT REQUIRED COMPONENTS
+    system thread filesystem chrono regex program_options unit_test_framework
+  )  
+elseif(PLATFORM_ID STREQUAL "platform:el9")
+  find_package(Boost 1.75 EXACT REQUIRED COMPONENTS
+    system thread filesystem chrono regex program_options unit_test_framework
   )
+else()
+  find_package(Boost REQUIRED COMPONENTS
+    system thread filesystem chrono regex program_options unit_test_framework
+  )
+endif()
+ 
 
 if(BUILD_AIDATLU_STATIC)
   add_library(cactus_uhal_grammars STATIC IMPORTED)
