@@ -163,7 +163,6 @@ install(EXPORT ${PROJECT_NAME}Targets
   )
 
 install(CODE "MESSAGE(\"project is installed in ${CMAKE_INSTALL_PREFIX} .\")")
-message(STATUS "test yuanshen QI Dong!!!")
 
 # build-tree
 set(CONF_INCLUDE_DIRS ${PROJECT_SOURCE_DIR}/include ${PROJECT_BINARY_DIR})
