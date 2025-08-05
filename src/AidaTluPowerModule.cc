@@ -12,11 +12,11 @@
 #include <chrono>
 
 
-PWRLED::PWRLED(){
+Pai::Pai(){
 
 }
 
-void PWRLED::initI2Cslaves(bool intRef, uint8_t verbose){
+void Pai::initI2Cslaves(bool intRef, uint8_t verbose){
   pwr_zeDAC.SetI2CPar(pwr_i2c_core,m_pwr_i2c_DACaddr);
   pwr_zeDAC.SetIntRef(intRef, verbose);
   pwr_ledExp1.SetI2CPar( pwr_i2c_core,m_pwr_i2c_exp1Add );
@@ -39,7 +39,7 @@ void PWRLED::initI2Cslaves(bool intRef, uint8_t verbose){
   pwr_ledExp2.setOutputs(1, 0xFF, false);// If output, set to XX
 }
 
-uint32_t PWRLED::_set_bit(uint32_t v, int index, bool x){
+uint32_t Pai::_set_bit(uint32_t v, int index, bool x){
   ///Set the index:th bit of v to 1 if x is truthy, else to 0, and return the new value
   uint32_t mask;
   if (index == -1){
@@ -55,7 +55,7 @@ uint32_t PWRLED::_set_bit(uint32_t v, int index, bool x){
   return v;
 }
 
-void PWRLED::setI2CPar( i2cCore  *mycore , char DACaddr, char Exp1Add, char Exp2Add, char IdAdd, uint8_t verbose){
+void Pai::setI2CPar( i2cCore  *mycore , char DACaddr, char Exp1Add, char Exp2Add, char IdAdd, uint8_t verbose){
  pwr_i2c_core = mycore;
  m_pwr_i2c_DACaddr= DACaddr;
  m_pwr_i2c_exp1Add= Exp1Add;
@@ -74,7 +74,7 @@ void PWRLED::setI2CPar( i2cCore  *mycore , char DACaddr, char Exp1Add, char Exp2
   return;
 }
 
-void PWRLED::setIndicatorRGB(int indicator, const std::array<int, 3>& RGB, uint8_t verbose){
+void Pai::setIndicatorRGB(int indicator, const std::array<int, 3>& RGB, uint8_t verbose){
   // Indicator is one of the 11 LEDs on the front panels, labeled from 0 to 10
   // RGB allows to switch on (True) or off (False) the corresponding component for that Led
   // Note that one LED only has 2 components connected
@@ -128,7 +128,7 @@ void PWRLED::setIndicatorRGB(int indicator, const std::array<int, 3>& RGB, uint8
   }
 }
 
-void PWRLED::setVchannel(int channel, float voltage, uint8_t verbose){
+void Pai::setVchannel(int channel, float voltage, uint8_t verbose){
   // Note: the channel here is the DAC channel.
   // The mapping with the power module is not one-to-one
   float dacValue;
@@ -149,42 +149,42 @@ void PWRLED::setVchannel(int channel, float voltage, uint8_t verbose){
   }
 }
 
-void PWRLED::led_allBlue(){
+void Pai::led_allBlue(){
   pwr_ledExp1.setOutputs(0, 111, false);
   pwr_ledExp1.setOutputs(1, 219, false);
   pwr_ledExp2.setOutputs(0, 182, false);
   pwr_ledExp2.setOutputs(1, 109, false);
 }
 
-void PWRLED::led_allGreen(){
+void Pai::led_allGreen(){
   pwr_ledExp1.setOutputs(0, 218, false);
   pwr_ledExp1.setOutputs(1, 182, false);
   pwr_ledExp2.setOutputs(0, 109, false);
   pwr_ledExp2.setOutputs(1, 219, false);
 }
 
-void PWRLED::led_allRed(){
+void Pai::led_allRed(){
   pwr_ledExp1.setOutputs(0, 181, false);
   pwr_ledExp1.setOutputs(1, 109, false);
   pwr_ledExp2.setOutputs(0, 219, false);
   pwr_ledExp2.setOutputs(1, 182, false);
 }
 
-void PWRLED::led_allOff(){
+void Pai::led_allOff(){
   pwr_ledExp1.setOutputs(0, 255, false);
   pwr_ledExp1.setOutputs(1, 255, false);
   pwr_ledExp2.setOutputs(0, 255, false);
   pwr_ledExp2.setOutputs(1, 255, false);
 }
 
-void PWRLED::led_allWhite(){
+void Pai::led_allWhite(){
   pwr_ledExp1.setOutputs(0, 0, false);
   pwr_ledExp1.setOutputs(1, 0, false);
   pwr_ledExp2.setOutputs(0, 0, false);
   pwr_ledExp2.setOutputs(1, 0, false);
 }
 
-void PWRLED::testLED(){
+void Pai::testLED(){
   std::array<int, 3> RGB{{0, 1, 0}};
   led_allOff();
   for (int iInd=1; iInd < 12; iInd++){
