@@ -1,0 +1,16 @@
+# - Config file for the package
+# It defines the following variables
+#  XXXXX_INCLUDE_DIRS - include directories
+#  XXXXX_LIBRARIES    - libraries to link against
+#  XXXXX_EXECUTABLE   - the  executable
+
+set(AIDATLU_INCLUDE_DIRS "/home/Tom/Git/git_clone/aidatlu/include;/home/Tom/Git/git_clone/aidatlu")
+
+# Our library dependencies (contains definitions for IMPORTED targets)
+if(NOT TARGET aidatlu AND NOT AIDATLU_EXECUTABLE_DIR)
+  include(${CMAKE_CURRENT_LIST_DIR}/aidatluTargets.cmake)
+endif()
+
+# These are IMPORTED targets created by FooBarTargets.cmake
+set(AIDATLU_LIBRARIES aidatlu)
+set(AIDATLU_EXECUTABLE mytlu)
