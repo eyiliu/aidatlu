@@ -10,10 +10,12 @@
 
 class PWRLED{
 private:
-  char pwr_i2c_DACaddr;
-  char pwr_i2c_exp1Add;
-  char pwr_i2c_exp2Add;
-  char pwr_i2c_eeprom;
+  char m_pwr_i2c_DACaddr;
+  char m_pwr_i2c_exp1Add;
+  char m_pwr_i2c_exp2Add;
+  char m_pwr_i2c_eeprom;
+  
+  
   i2cCore * pwr_i2c_core;
   AD5665R pwr_zeDAC;
   PCA9539PW pwr_ledExp1, pwr_ledExp2;
