@@ -17,10 +17,10 @@ PWRLED::PWRLED(){
 }
 
 void PWRLED::initI2Cslaves(bool intRef, uint8_t verbose){
-  pwr_zeDAC.SetI2CPar(pwr_i2c_core, pwr_i2c_DACaddr);
+  pwr_zeDAC.SetI2CPar(pwr_i2c_core,m_pwr_i2c_DACaddr);
   pwr_zeDAC.SetIntRef(intRef, verbose);
-  pwr_ledExp1.SetI2CPar( pwr_i2c_core, pwr_i2c_exp1Add );
-  pwr_ledExp2.SetI2CPar( pwr_i2c_core, pwr_i2c_exp2Add );
+  pwr_ledExp1.SetI2CPar( pwr_i2c_core,m_pwr_i2c_exp1Add );
+  pwr_ledExp2.SetI2CPar( pwr_i2c_core,m_pwr_i2c_exp2Add );
 
   pwr_ledExp1.setInvertReg(0, 0x00, false);// 0= normal, 1= inverted
   pwr_ledExp1.setIOReg(0, 0x00, false);// 0= output, 1= input
@@ -56,10 +56,10 @@ uint32_t PWRLED::_set_bit(uint32_t v, int index, bool x){
 }
 
 void PWRLED::setI2CPar( i2cCore  *mycore , char DACaddr, char Exp1Add, char Exp2Add, char IdAdd, uint8_t verbose){
-  pwr_i2c_core = mycore;
-  pwr_i2c_DACaddr= DACaddr;
-  pwr_i2c_exp1Add= Exp1Add;
-  pwr_i2c_exp2Add= Exp2Add;
+ pwr_i2c_core = mycore;
+ m_pwr_i2c_DACaddr= DACaddr;
+ m_pwr_i2c_exp1Add= Exp1Add;
+ m_pwr_i2c_exp2Add= Exp2Add;
   if (IdAdd){
     std::cout << "\tTYPE: new" << std::endl;
     //std::cout << "\tI2C addr: 0x" << std::hex<< (int)IdAdd << std::dec << "(EEPROM)" << std::endl;
