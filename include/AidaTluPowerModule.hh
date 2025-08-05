@@ -8,7 +8,7 @@
 #include "AidaTluHardware.hh"
 #include <array>
 
-class PWRLED{
+class Pai{
 private:
   char m_pwr_i2c_DACaddr;
   char m_pwr_i2c_exp1Add;
@@ -22,7 +22,7 @@ private:
   std::array<std::array<int, 3>, 11> indicatorXYZ;
 
 public:
-  PWRLED();
+  Pai();
   void led_allBlue();
   void led_allGreen();
   void led_allRed();
