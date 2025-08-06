@@ -41,7 +41,7 @@ namespace tlu {
     std::string xml_path_for_uhal="file://"+xml_path;
     m_hw.reset(new uhal::HwInterface(uhal::ConnectionManager::getDevice( "aida_tlu.controlhub",url.c_str(),xml_path_for_uhal.c_str())));
     m_i2c.reset(new i2cCore(m_hw.get()));
-    m_pwrled.reset(new PWRLED);
+    m_pwrled.reset(new AidaTluPowerModule);
     m_lcddisp.reset(new LCD09052);
     m_IPaddress= parseURI();
 
