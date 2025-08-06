@@ -17,7 +17,7 @@ class AD5665R;
 class PCA9539PW;
 class Si5345;
 class i2cCore;
-class PWRLED;
+class AidaTluPowerModule;
 class LCD09052;
 
 namespace tlu {
@@ -213,7 +213,7 @@ namespace tlu {
     std::unique_ptr<AD5665R> m_zeDAC1, m_zeDAC2; //p 
     std::unique_ptr<PCA9539PW> m_IOexpander1, m_IOexpander2; //p
     std::unique_ptr<Si5345> m_zeClock; // p
-    std::unique_ptr<PWRLED> m_pwrled;
+    std::unique_ptr<AidaTluPowerModule> m_pwrled;
     std::unique_ptr<LCD09052> m_lcddisp;
 
     // Define constants such as number of DUTs and trigger inputs
